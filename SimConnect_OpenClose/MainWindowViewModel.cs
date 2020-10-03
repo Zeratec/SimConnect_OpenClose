@@ -12,7 +12,7 @@ using System.Windows.Threading;
 
 namespace SimConnect_OpenClose
 {
-    class MainWindowViewModel
+    class MainWindowViewModel : ViewModelBase
     {
         #region Variable
         // User-defined win32 event
@@ -32,19 +32,28 @@ namespace SimConnect_OpenClose
         #region Constructor
         public MainWindowViewModel()
         {
+            cmdToggleContent = "Disconnected";
             cmdToggleConnect = new RelayCommand(ToggleConnect);
-
-            m_oTimer.Interval = new TimeSpan(0, 0, 0, 1, 0);
-            m_oTimer.Tick += new EventHandler(OnTick);
         }
         #endregion Constructor
 
-        #region Public method
-        public bool bOddTick
+        #region Properties
+        private object _cmdToggleContent;
+        public object cmdToggleContent
         {
-            get { return m_bOddTick; }
-            set { this.SetProperty(ref m_bOddTick, value); }
+            get
+            {
+                return _cmdToggleContent;
+            }
+            set
+            {
+                _cmdToggleContent = value;
+                OnPropertyChanged("cmdToggleContent");
+            }
         }
+        #endregion Properties
+
+        #region Public method
         #endregion Public method
 
         #region Private method
@@ -71,16 +80,18 @@ namespace SimConnect_OpenClose
         {
             try
             {
+                Console.WriteLine("Connected");
+                cmdToggleContent = "Connected";
+
                 // The constructor is similar to SimConnect_Open in the native API
                 m_oSimConnect = new SimConnect("Simconnect - Simvar test", m_hWnd, WM_USER_SIMCONNECT, null, 0);
-                Console.WriteLine("Connect");
-
+                
                 // Listen to connect and quit msgs
                 m_oSimConnect.OnRecvOpen += new SimConnect.RecvOpenEventHandler(SimConnect_OnRecvOpen);
-                m_oSimConnect.OnRecvQuit += new SimConnect.RecvQuitEventHandler(SimConnect_OnRecvQuit);
+             //   m_oSimConnect.OnRecvQuit += new SimConnect.RecvQuitEventHandler(SimConnect_OnRecvQuit);
 
                 // Listen to exceptions
-                m_oSimConnect.OnRecvException += new SimConnect.RecvExceptionEventHandler(SimConnect_OnRecvException);
+             //   m_oSimConnect.OnRecvException += new SimConnect.RecvExceptionEventHandler(SimConnect_OnRecvException);
 
                 // Catch a simobject data request
              //   m_oSimConnect.OnRecvSimobjectDataBytype += new SimConnect.RecvSimobjectDataBytypeEventHandler(SimConnect_OnRecvSimobjectDataBytype);
@@ -92,14 +103,12 @@ namespace SimConnect_OpenClose
         }
 
         private void Disconnect()
-        {
-            Console.WriteLine("Disconnect");
-
-            //m_oTimer.Stop();
-            //bOddTick = false;
-
+        {         
             if (m_oSimConnect != null)
             {
+                Console.WriteLine("Disconnected");
+                cmdToggleContent = "Disconnected";
+
                 // Dispose serves the same purpose as SimConnect_Close()
                 m_oSimConnect.Dispose();
                 m_oSimConnect = null;
@@ -133,31 +142,6 @@ namespace SimConnect_OpenClose
             //        oSimvarRequest.bStillPending = oSimvarRequest.bPending;
             //    }
             //}
-
-            m_oTimer.Start();
-            bOddTick = false;
-        }
-
-        // May not be the best way to achive regular requests.
-        // See SimConnect.RequestDataOnSimObject
-        private void OnTick(object sender, EventArgs e)
-        {
-            Console.WriteLine("OnTick");
-
-            bOddTick = !bOddTick;
-
-            foreach (SimvarRequest oSimvarRequest in lSimvarRequests)
-            {
-                if (!oSimvarRequest.bPending)
-                {
-                    m_oSimConnect?.RequestDataOnSimObjectType(oSimvarRequest.eRequest, oSimvarRequest.eDef, 0, m_eSimObjectType);
-                    oSimvarRequest.bPending = true;
-                }
-                else
-                {
-                    oSimvarRequest.bStillPending = true;
-                }
-            }
         }
         #endregion Private method
     }
